@@ -109,6 +109,36 @@ services:
     networks:
       - laravel-network
 
+  # ==============================================
+  # FileBrowser (Web-based File Manager)
+  # ==============================================
+  # Default credentials: admin / admin
+  # Change password via Settings > User Management in the UI
+  # ==============================================
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: laravel-filebrowser
+    hostname: filebrowser
+    
+    volumes:
+      # Laravel application files to browse/manage
+      - ./laravel-app:/srv:rw
+      # FileBrowser database directory (stores users, settings)
+      - ./volumes/filebrowser:/database
+      # FileBrowser configuration (from repo)
+      - ./config/filebrowser.json:/.filebrowser.json:ro
+      
+    ports:
+      - "8080:80"
+      
+    environment:
+      - PUID=1000
+      - PGID=1000
+      
+    restart: unless-stopped
+    networks:
+      - laravel-network
+
 networks:
   laravel-network:
     driver: bridge

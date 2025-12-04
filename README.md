@@ -16,6 +16,7 @@ A production-ready Docker environment that simulates a **DigitalOcean Droplet** 
 - 📦 **Redis 7** - For caching, sessions, and queues
 - 🔐 **SSL Support** - Self-signed or Let's Encrypt
 - 🛠️ **phpMyAdmin** - Database management UI
+- 📂 **FileBrowser** - Web-based file manager with password protection
 - 📦 **Composer & Node.js** - Pre-installed
 - 🔄 **Queue Worker** - Supervisor-managed Laravel queues
 - ⏰ **Task Scheduler** - Laravel scheduler running automatically
@@ -52,6 +53,7 @@ cd laravel-droplet
 |---------|-----|-------------|
 | Laravel App | https://localhost | - |
 | phpMyAdmin | https://localhost/phpmyadmin | laravel_user / laravel_password |
+| FileBrowser | http://localhost:8080 | admin / admin (change after first login) |
 | SSH | `ssh root@localhost -p 2222` | password: `password` |
 | MySQL | localhost:3306 | root / root_password |
 | Redis | localhost:6379 | - |
@@ -62,11 +64,44 @@ cd laravel-droplet
 ├── deploy.sh            # Deploy Laravel app from zip
 ├── build-image.sh       # Build base Docker image
 ├── ssl-manage.sh        # Manage SSL certificates
+├── filebrowser-setup.sh # Setup FileBrowser with custom password
 ├── docker-compose.yml   # Container orchestration
 ├── Dockerfile.base      # Base image definition
+├── config/              # Service configuration files
+│   └── filebrowser.json # FileBrowser configuration
 ├── laravel-app/         # Your Laravel application
-└── volumes/             # Persistent data (MySQL, logs, SSL)
+└── volumes/             # Persistent data (MySQL, logs, SSL, FileBrowser)
 ```
+
+## 📂 FileBrowser (File Manager)
+
+FileBrowser provides a web-based file manager to browse, upload, edit, and manage your Laravel files.
+
+### Quick Start
+
+```bash
+# Start all services including FileBrowser
+docker-compose up -d
+
+# Access at http://localhost:8080
+# Default: admin / admin
+```
+
+### Custom Password Setup
+
+```bash
+# Interactive setup with custom credentials
+./filebrowser-setup.sh
+
+# Or provide credentials directly
+./filebrowser-setup.sh myuser mypassword
+```
+
+### Change Password via UI
+
+1. Login to FileBrowser at http://localhost:8080
+2. Go to **Settings** → **User Management**
+3. Edit the admin user to change password
 
 ## 🔐 SSL Configuration
 
