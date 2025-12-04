@@ -1,0 +1,38 @@
+# ==============================================
+# Laravel Droplet - Git Ignore
+# ==============================================
+
+# Laravel Application (users add their own)
+laravel-app/
+
+# Persistent Volumes
+volumes/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
