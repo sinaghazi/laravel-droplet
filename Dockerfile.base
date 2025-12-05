@@ -57,9 +57,9 @@ RUN phpenmod -v 8.4 mbstring curl zip bcmath xml intl gd opcache
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # ==============================================
-# Node.js 20
+# Node.js 22 LTS
 # ==============================================
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean
 
@@ -89,30 +89,30 @@ RUN echo "ServerTokens Prod" >> /etc/apache2/apache2.conf \
     && echo "ServerSignature Off" >> /etc/apache2/apache2.conf
 
 # ==============================================
-# PHP Configuration
+# PHP Configuration (Large Uploads: 200MB)
 # ==============================================
-RUN sed -i 's/upload_max_filesize = .*/upload_max_filesize = 64M/' /etc/php/8.4/apache2/php.ini \
-    && sed -i 's/post_max_size = .*/post_max_size = 64M/' /etc/php/8.4/apache2/php.ini \
-    && sed -i 's/memory_limit = .*/memory_limit = 256M/' /etc/php/8.4/apache2/php.ini \
-    && sed -i 's/max_execution_time = .*/max_execution_time = 120/' /etc/php/8.4/apache2/php.ini \
+RUN sed -i 's/upload_max_filesize = .*/upload_max_filesize = 200M/' /etc/php/8.4/apache2/php.ini \
+    && sed -i 's/post_max_size = .*/post_max_size = 210M/' /etc/php/8.4/apache2/php.ini \
+    && sed -i 's/memory_limit = .*/memory_limit = 512M/' /etc/php/8.4/apache2/php.ini \
+    && sed -i 's/max_execution_time = .*/max_execution_time = 300/' /etc/php/8.4/apache2/php.ini \
+    && sed -i 's/max_input_time = .*/max_input_time = 300/' /etc/php/8.4/apache2/php.ini \
     && sed -i 's/expose_php = .*/expose_php = Off/' /etc/php/8.4/apache2/php.ini
 
 # ==============================================
-# Setup Directory & Landing Page
+# Setup Directory & Files
 # ==============================================
 WORKDIR /var/www/html
-RUN mkdir -p /var/www/html/public
 
-# Copy landing page
-COPY landing.html /var/www/html/public/index.html
+# Store setup wizard in /opt (won't be overwritten by volume)
+COPY landing.php /opt/landing.php
 
-# Set ownership to www-data (Apache user) with full permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # ==============================================
-# Expose Port & Start Apache
+# Expose Port & Start
 # ==============================================
 EXPOSE 80
 
-CMD ["apachectl", "-D", "FOREGROUND"]
+ENTRYPOINT ["/entrypoint.sh"]
