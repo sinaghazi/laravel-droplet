@@ -1,46 +1,27 @@
 # ==============================================
-# docker-compose.yml - Laravel Droplet Environment
-# ==============================================
-# Uses pre-built image for faster setup
-# Change 'yourusername/laravel-droplet:latest' to your Docker Hub image
+# Laravel Droplet - Minimal Setup
 # ==============================================
 
 services:
   # ==============================================
-  # Laravel Server (Pre-built Image)
+  # Laravel Server (Apache + PHP 8.4)
   # ==============================================
   laravel-droplet:
-    # Option 1: Use pre-built image from Docker Hub (faster)
-    image: ${DOCKER_IMAGE:-sinaghazi/laravel-droplet:latest}
-    
-    # Option 2: Build locally (uncomment if not using pre-built image)
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.base
+    build:
+      context: .
+      dockerfile: Dockerfile.base
     
     container_name: laravel-server
-    hostname: laravel-droplet
     
     volumes:
-      # Laravel application
-      - ./laravel-app:/var/www/html:rw
-      # Logs persistence
-      - ./volumes/apache-logs:/var/log/apache2
-      - ./volumes/php-logs:/var/log/php
-      - ./volumes/supervisor-logs:/var/log/supervisor
+      - www_data:/var/www/html
       
     ports:
-      - "80:80"       # HTTP
-      - "2222:22"     # SSH
+      - "80:80"
       
     environment:
-      - TZ=Europe/Helsinki
-      - APACHE_RUN_USER=www-data
-      - APACHE_RUN_GROUP=www-data
+      - TZ=UTC
       
-    user: root
-    stdin_open: true
-    tty: true
     restart: unless-stopped
     
     depends_on:
@@ -56,16 +37,15 @@ services:
   mysql:
     image: mysql:8.4
     container_name: laravel-mysql
-    hostname: mysql
     
     volumes:
-      - ./volumes/mysql:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       
     environment:
       MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: laravel_db
-      MYSQL_USER: laravel_user
-      MYSQL_PASSWORD: laravel_password
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: laravel
       
     ports:
       - "3306:3306"
@@ -81,59 +61,9 @@ services:
     networks:
       - laravel-network
 
-  # ==============================================
-  # Redis (for caching/sessions/queues)
-  # ==============================================
-  redis:
-    image: redis:7-alpine
-    container_name: laravel-redis
-    hostname: redis
-    
-    volumes:
-      - ./volumes/redis:/data
-      
-    ports:
-      - "6379:6379"
-      
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      
-    restart: unless-stopped
-    networks:
-      - laravel-network
-
-  # ==============================================
-  # FileBrowser (Web-based File Manager)
-  # ==============================================
-  # Default credentials: admin / admin
-  # Change password via Settings > User Management in the UI
-  # ==============================================
-  filebrowser:
-    image: filebrowser/filebrowser:latest
-    container_name: laravel-filebrowser
-    hostname: filebrowser
-    
-    volumes:
-      # Laravel application files to browse/manage
-      - ./laravel-app:/srv:rw
-      # FileBrowser database directory (stores users, settings)
-      - ./volumes/filebrowser:/database
-      # FileBrowser configuration (from repo)
-      - ./config/filebrowser.json:/.filebrowser.json:ro
-      
-    ports:
-      - "8080:80"
-      
-    environment:
-      - PUID=1000
-      - PGID=1000
-      
-    restart: unless-stopped
-    networks:
-      - laravel-network
+volumes:
+  www_data:
+  mysql_data:
 
 networks:
   laravel-network:

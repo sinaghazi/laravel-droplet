@@ -1,34 +1,32 @@
 # ==============================================
-# Laravel Droplet Base Image
-# Build once, use everywhere
+# Laravel Droplet Base Image (Minimal)
 # ==============================================
 # Build: docker build -f Dockerfile.base -t sinaghazi/laravel-droplet:latest .
-# Push:  docker push sinaghazi/laravel-droplet:latest
 # ==============================================
 
 FROM ubuntu:24.04
 
 LABEL maintainer="sinaghazi"
-LABEL description="Pre-configured Laravel development environment simulating a DigitalOcean droplet"
-LABEL version="1.0"
+LABEL description="Minimal Laravel environment - Apache + PHP 8.4"
+LABEL version="2.0"
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=Europe/Helsinki
+ENV TZ=UTC
 
 # ==============================================
-# Step 1: System Update
+# System Update & Apache
 # ==============================================
-RUN apt-get update && apt-get upgrade -y
-
-# ==============================================
-# Step 2: Install Apache
-# ==============================================
-RUN apt-get install -y \
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y \
     apache2 \
-    software-properties-common
+    software-properties-common \
+    curl \
+    unzip \
+    git \
+    && apt-get clean
 
 # ==============================================
-# Step 3: Install PHP 8.4 with all Laravel extensions
+# PHP 8.4 with Laravel Extensions
 # ==============================================
 RUN add-apt-repository ppa:ondrej/php -y \
     && apt-get update \
@@ -44,82 +42,33 @@ RUN add-apt-repository ppa:ondrej/php -y \
     php8.4-xml \
     php8.4-bcmath \
     php8.4-intl \
-    php8.4-soap \
-    php8.4-redis \
     php8.4-opcache \
-    php8.4-readline \
-    php8.4-imagick \
-    php8.4-fileinfo \
-    libapache2-mod-php8.4
+    php8.4-redis \
+    libapache2-mod-php8.4 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Explicitly enable extensions
-RUN phpenmod -v 8.4 mbstring curl zip bcmath xml intl gd imagick opcache
-
-# Verify installation
-RUN php -m | grep -E "mbstring|curl|zip|bcmath|xml|intl|gd"
+# Enable PHP extensions
+RUN phpenmod -v 8.4 mbstring curl zip bcmath xml intl gd opcache
 
 # ==============================================
-# Step 4: Install Composer
+# Composer
 # ==============================================
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # ==============================================
-# Step 5: Install Node.js 20
+# Node.js 20
 # ==============================================
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs
+    && apt-get install -y nodejs \
+    && apt-get clean
 
 # ==============================================
-# Step 6: Install phpMyAdmin
+# Apache Configuration
 # ==============================================
-# Prevent phpMyAdmin from installing PHP 8.5
-RUN apt-get install -y phpmyadmin --no-install-recommends \
-    && ln -s /usr/share/phpmyadmin /var/www/html/phpmyadmin \
-    && update-alternatives --set php /usr/bin/php8.4 \
-    && update-alternatives --set phar /usr/bin/phar8.4 \
-    && update-alternatives --set phar.phar /usr/bin/phar.phar8.4
+RUN a2enmod rewrite headers
 
-# Configure phpMyAdmin for remote MySQL
-RUN echo "<?php\n\
-\$cfg['blowfish_secret'] = '$(openssl rand -base64 32)';\n\
-\$i = 0;\n\
-\$i++;\n\
-\$cfg['Servers'][\$i]['auth_type'] = 'cookie';\n\
-\$cfg['Servers'][\$i]['host'] = 'mysql';\n\
-\$cfg['Servers'][\$i]['port'] = '3306';\n\
-\$cfg['Servers'][\$i]['compress'] = false;\n\
-\$cfg['Servers'][\$i]['AllowNoPassword'] = false;\n\
-?>" > /etc/phpmyadmin/config.inc.php
-
-# ==============================================
-# Step 7: Install Essential Tools
-# ==============================================
-RUN apt-get install -y \
-    curl \
-    wget \
-    git \
-    unzip \
-    zip \
-    vim \
-    nano \
-    htop \
-    net-tools \
-    iputils-ping \
-    dnsutils \
-    openssh-server \
-    supervisor \
-    cron \
-    mysql-client \
-    openssl \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# ==============================================
-# Step 8: Configure Apache
-# ==============================================
-RUN a2enmod rewrite headers expires
-
-# HTTP VirtualHost
+# VirtualHost - HTTP only, pointing to /var/www/html/public
 RUN echo '<VirtualHost *:80>\n\
     ServerAdmin admin@localhost\n\
     ServerName localhost\n\
@@ -131,77 +80,39 @@ RUN echo '<VirtualHost *:80>\n\
         Require all granted\n\
     </Directory>\n\
     \n\
-    # phpMyAdmin alias\n\
-    Alias /phpmyadmin /usr/share/phpmyadmin\n\
-    <Directory /usr/share/phpmyadmin>\n\
-        Options FollowSymLinks\n\
-        DirectoryIndex index.php\n\
-        AllowOverride All\n\
-        Require all granted\n\
-    </Directory>\n\
-    \n\
-    ServerSignature Off\n\
     ErrorLog ${APACHE_LOG_DIR}/error.log\n\
     CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
-# Security headers
+# Security settings
 RUN echo "ServerTokens Prod" >> /etc/apache2/apache2.conf \
     && echo "ServerSignature Off" >> /etc/apache2/apache2.conf
 
 # ==============================================
-# Step 9: Configure PHP
+# PHP Configuration
 # ==============================================
 RUN sed -i 's/upload_max_filesize = .*/upload_max_filesize = 64M/' /etc/php/8.4/apache2/php.ini \
     && sed -i 's/post_max_size = .*/post_max_size = 64M/' /etc/php/8.4/apache2/php.ini \
-    && sed -i 's/memory_limit = .*/memory_limit = 512M/' /etc/php/8.4/apache2/php.ini \
-    && sed -i 's/max_execution_time = .*/max_execution_time = 300/' /etc/php/8.4/apache2/php.ini \
-    && sed -i 's/max_input_time = .*/max_input_time = 300/' /etc/php/8.4/apache2/php.ini \
-    && sed -i 's/;max_input_vars = .*/max_input_vars = 5000/' /etc/php/8.4/apache2/php.ini \
+    && sed -i 's/memory_limit = .*/memory_limit = 256M/' /etc/php/8.4/apache2/php.ini \
+    && sed -i 's/max_execution_time = .*/max_execution_time = 120/' /etc/php/8.4/apache2/php.ini \
     && sed -i 's/expose_php = .*/expose_php = Off/' /etc/php/8.4/apache2/php.ini
 
-RUN sed -i 's/memory_limit = .*/memory_limit = 512M/' /etc/php/8.4/cli/php.ini \
-    && sed -i 's/max_execution_time = .*/max_execution_time = 0/' /etc/php/8.4/cli/php.ini
-
 # ==============================================
-# Step 10: Configure SSH
-# ==============================================
-RUN mkdir -p /var/run/sshd \
-    && echo 'root:password' | chpasswd \
-    && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
-    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
-
-# ==============================================
-# Step 11: Setup Directories
+# Setup Directory & Landing Page
 # ==============================================
 WORKDIR /var/www/html
-RUN mkdir -p /var/log/supervisor
 RUN mkdir -p /var/www/html/public
 
-# Create a placeholder index.php
-RUN echo '<?php phpinfo();' > /var/www/html/public/index.php
+# Copy landing page
+COPY landing.html /var/www/html/public/index.html
+
+# Set ownership to www-data (Apache user) with full permissions
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html
 
 # ==============================================
-# Step 12: Copy Configuration Files
+# Expose Port & Start Apache
 # ==============================================
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+EXPOSE 80
 
-# ==============================================
-# Step 13: Ensure PHP 8.4 is default (fix phpMyAdmin PHP 8.5 issue)
-# ==============================================
-RUN update-alternatives --set php /usr/bin/php8.4 \
-    && update-alternatives --set phar /usr/bin/phar8.4 \
-    && update-alternatives --set phar.phar /usr/bin/phar.phar8.4
-
-# ==============================================
-# Expose Ports
-# ==============================================
-EXPOSE 80 22
-
-# ==============================================
-# Entrypoint & Command
-# ==============================================
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["apachectl", "-D", "FOREGROUND"]
