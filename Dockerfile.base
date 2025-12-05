@@ -110,8 +110,6 @@ RUN apt-get install -y \
     supervisor \
     cron \
     mysql-client \
-    certbot \
-    python3-certbot-apache \
     openssl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -119,20 +117,13 @@ RUN apt-get install -y \
 # ==============================================
 # Step 8: Configure Apache
 # ==============================================
-RUN a2enmod rewrite ssl headers expires socache_shmcb
+RUN a2enmod rewrite headers expires
 
-# Create SSL directory
-RUN mkdir -p /etc/apache2/ssl
-
-# HTTP VirtualHost (with HTTPS redirect)
+# HTTP VirtualHost
 RUN echo '<VirtualHost *:80>\n\
     ServerAdmin admin@localhost\n\
     ServerName localhost\n\
     DocumentRoot /var/www/html/public\n\
-    \n\
-    RewriteEngine On\n\
-    RewriteCond %{HTTPS} off\n\
-    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]\n\
     \n\
     <Directory /var/www/html/public>\n\
         Options -Indexes +FollowSymLinks\n\
@@ -153,49 +144,6 @@ RUN echo '<VirtualHost *:80>\n\
     ErrorLog ${APACHE_LOG_DIR}/error.log\n\
     CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
-
-# HTTPS VirtualHost
-RUN echo '<VirtualHost *:443>\n\
-    ServerAdmin admin@localhost\n\
-    ServerName localhost\n\
-    DocumentRoot /var/www/html/public\n\
-    \n\
-    SSLEngine on\n\
-    SSLCertificateFile /etc/apache2/ssl/apache-selfsigned.crt\n\
-    SSLCertificateKeyFile /etc/apache2/ssl/apache-selfsigned.key\n\
-    \n\
-    SSLProtocol all -SSLv3 -TLSv1 -TLSv1.1\n\
-    SSLCipherSuite ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384\n\
-    SSLHonorCipherOrder off\n\
-    SSLSessionTickets off\n\
-    \n\
-    Header always set Strict-Transport-Security "max-age=63072000"\n\
-    \n\
-    <Directory /var/www/html/public>\n\
-        Options -Indexes +FollowSymLinks\n\
-        AllowOverride All\n\
-        Require all granted\n\
-    </Directory>\n\
-    \n\
-    # phpMyAdmin alias\n\
-    Alias /phpmyadmin /usr/share/phpmyadmin\n\
-    <Directory /usr/share/phpmyadmin>\n\
-        Options FollowSymLinks\n\
-        DirectoryIndex index.php\n\
-        AllowOverride All\n\
-        Require all granted\n\
-    </Directory>\n\
-    \n\
-    <FilesMatch "\\.php$">\n\
-        SSLOptions +StdEnvVars\n\
-    </FilesMatch>\n\
-    \n\
-    ServerSignature Off\n\
-    ErrorLog ${APACHE_LOG_DIR}/ssl_error.log\n\
-    CustomLog ${APACHE_LOG_DIR}/ssl_access.log combined\n\
-</VirtualHost>' > /etc/apache2/sites-available/default-ssl.conf
-
-RUN a2ensite default-ssl
 
 # Security headers
 RUN echo "ServerTokens Prod" >> /etc/apache2/apache2.conf \
@@ -250,7 +198,7 @@ RUN update-alternatives --set php /usr/bin/php8.4 \
 # ==============================================
 # Expose Ports
 # ==============================================
-EXPOSE 80 443 22
+EXPOSE 80 22
 
 # ==============================================
 # Entrypoint & Command

@@ -28,13 +28,9 @@ services:
       - ./volumes/apache-logs:/var/log/apache2
       - ./volumes/php-logs:/var/log/php
       - ./volumes/supervisor-logs:/var/log/supervisor
-      # SSL certificates persistence
-      - ./volumes/letsencrypt:/etc/letsencrypt
-      - ./volumes/ssl:/etc/apache2/ssl
       
     ports:
       - "80:80"       # HTTP
-      - "443:443"     # HTTPS
       - "2222:22"     # SSH
       
     environment:
