@@ -15,6 +15,8 @@ echo "🚀 Starting Laravel Droplet Container..."
 # ==============================================
 if [ -n "$COOLIFY_MODE" ] || [ -n "$SKIP_SSL" ]; then
     echo "🌐 Coolify mode detected - skipping SSL generation"
+    # Disable SSL site since we don't have certificates
+    a2dissite default-ssl 2>/dev/null || true
 else
     # ==============================================
     # Generate Self-Signed SSL Certificate if not exists
